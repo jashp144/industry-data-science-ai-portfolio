@@ -29,7 +29,7 @@ class DocumentLoader:
                                 page_content=content,
                                 metadata={
                                     "source": os.path.basename(file_path),
-                                    "file_path": file_path
+                                    "file_path": os.path.basename(file_path)
                                 }
                             )
                         )

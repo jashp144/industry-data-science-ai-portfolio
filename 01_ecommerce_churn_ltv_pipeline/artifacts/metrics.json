@@ -1,0 +1,39 @@
+{
+  "churn_models": {
+    "LogisticRegression": {
+      "accuracy": 0.719,
+      "roc_auc": 0.7696,
+      "f1_score": 0.5147,
+      "precision": 0.6132,
+      "recall": 0.4435
+    },
+    "RandomForest": {
+      "accuracy": 0.711,
+      "roc_auc": 0.763,
+      "f1_score": 0.4755,
+      "precision": 0.6093,
+      "recall": 0.3899
+    },
+    "GradientBoosting": {
+      "accuracy": 0.705,
+      "roc_auc": 0.7474,
+      "f1_score": 0.4834,
+      "precision": 0.5872,
+      "recall": 0.4107
+    }
+  },
+  "best_churn_model": "LogisticRegression",
+  "ltv_models": {
+    "Ridge": {
+      "r2_score": 0.6221,
+      "mae": 871.09,
+      "rmse": 1037.22
+    },
+    "GradientBoostingRegressor": {
+      "r2_score": 0.6415,
+      "mae": 807.29,
+      "rmse": 1010.18
+    }
+  },
+  "best_ltv_model": "GradientBoostingRegressor"
+}

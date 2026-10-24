@@ -8,12 +8,14 @@ projects = [
     ("03 Financial Fraud Detection System", "03_financial_fraud_detection_system/test_fraud.py"),
     ("04 Retail Demand Forecasting Engine", "04_retail_demand_forecasting_engine/test_forecasting.py"),
     ("05 Automated SQL Analytics Agent", "05_automated_sql_analytics_agent/test_sql_agent.py"),
+    ("06A CWH Advanced Dragon Real Estate", "06_codewithharry_course_advanced_suite/dragon_real_estate/test_dragon.py"),
+    ("06B CWH Advanced Coders Labor Market", "06_codewithharry_course_advanced_suite/coders_analytics/test_talent.py"),
 ]
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 print("==========================================================")
-print("  EXECUTING ALL 5 DATA SCIENCE PORTFOLIO TEST SUITES")
+print("  EXECUTING ALL DATA SCIENCE & AI PORTFOLIO TEST SUITES")
 print("==========================================================")
 
 all_passed = True
@@ -40,6 +42,6 @@ for name, status in results:
     print(f"{name:.<45} {status}")
 
 if all_passed:
-    print("\nALL 5 PROJECTS VERIFIED AND OPERATIONAL!")
+    print("\nALL 7 SYSTEMS VERIFIED AND 100% OPERATIONAL!")
 else:
     print("\nSome tests failed. Review logs above.")

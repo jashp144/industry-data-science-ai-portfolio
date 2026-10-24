@@ -32,7 +32,7 @@ flowchart TD
 
 ---
 
-## 📋 Resume-Ready Bullet Points
+## 📋 Engineering & Performance Highlights
 - *Constructed a multi-store time-series demand forecasting pipeline using Gradient Boosting and automated lag/rolling feature engineering, attaining a WAPE under 15% across volatile promotional cycles.*
 - *Formulated an automated replenishment optimizer computing dynamic safety stock and Reorder Points (ROP) at a 95% service level, mitigating simulated stockout risk by 35%.*
 - *Delivered an end-to-end forecasting microservice with FastAPI, exposing endpoints for supply-chain planning and ERP integration.*

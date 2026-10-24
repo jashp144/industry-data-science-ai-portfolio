@@ -50,7 +50,7 @@ flowchart TD
 
 ---
 
-## 📋 Resume-Ready Bullet Points
+## 📋 Engineering & Performance Highlights
 - *Architected an end-to-end MLOps retention pipeline utilizing Gradient Boosting and Scikit-Learn, predicting customer churn (ROC-AUC: 0.85+) and estimating customer lifetime value ($).*
 - *Engineered a statistical data drift monitor leveraging Kolmogorov-Smirnov tests and Population Stability Index (PSI) to detect feature distribution shifts and trigger automated retraining alerts.*
 - *Packaged and deployed models as containerized microservices using FastAPI, processing single and batch inference with sub-25ms response latency.*

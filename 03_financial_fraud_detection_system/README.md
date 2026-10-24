@@ -31,7 +31,7 @@ flowchart TD
 
 ---
 
-## 📋 Resume-Ready Bullet Points
+## 📋 Engineering & Performance Highlights
 - *Constructed an end-to-end real-time fraud detection engine for streaming financial transactions with a 2% positive class imbalance, optimizing for Precision-Recall AUC (PR-AUC: 0.85+).*
 - *Formulated a business cost matrix penalizing false negatives ($400 loss) vs false positives ($15 verification cost), identifying an optimal decision threshold that saved thousands of dollars in simulated fraud losses.*
 - *Deployed a sub-15ms inference service with FastAPI, executing dynamic tri-tier routing (Approve, Step-Up OTP, Decline).*

@@ -36,7 +36,7 @@ flowchart TD
 
 ---
 
-## 📋 Resume-Ready Bullet Points
+## 📋 Engineering & Performance Highlights
 - *Designed and deployed an Enterprise Retrieval-Augmented Generation (RAG) knowledge engine indexing unstructured multi-format documentation with recursive text chunking and cosine similarity retrieval.*
 - *Implemented hallucination guardrails and confidence calibration thresholds, successfully preventing ungrounded generation on out-of-domain queries.*
 - *Packaged semantic search and synthesis as a microservice using FastAPI, delivering responses with document citation provenance.*

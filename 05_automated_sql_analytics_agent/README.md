@@ -30,7 +30,7 @@ flowchart TD
 
 ---
 
-## 📋 Resume-Ready Bullet Points
+## 📋 Engineering & Performance Highlights
 - *Engineered an automated natural language analytics agent translating complex business queries into optimized SQL featuring Common Table Expressions (CTEs) and Window Functions (`LAG()`, `DENSE_RANK()`).*
 - *Implemented AST-based SQL security guardrails to sanitize inputs and block mutating operations, ensuring zero data corruption risk.*
 - *Built an automated executive insights synthesis module translating analytical dataframes into prioritized strategic business recommendations.*

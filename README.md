@@ -15,18 +15,19 @@ A collection of 7 end-to-end machine learning, operations research, and retrieva
 ```text
 industry-data-science-ai-portfolio/
 ├── .github/workflows/ci.yml           # Automated CI/CD test suite on Python 3.11 & 3.12
-├── 01_ecommerce_churn_ltv_pipeline/   # Dual-target retention & LTV modeling with PSI drift monitoring
-├── 02_enterprise_rag_knowledge_engine/# Dense vector search, anti-hallucination thresholds & citations
-├── 03_financial_fraud_detection_system/# Imbalanced streaming classification & cost-sensitive cutoff optimization
-├── 04_retail_demand_forecasting_engine/# Time-series lag feature engineering & inventory replenishment (Safety Stock/ROP)
-├── 05_automated_sql_analytics_agent/  # Text-to-SQL translation with Window Functions, CTEs & AST guardrails
+├── 01_ecommerce_churn_ltv_pipeline/   # Dual-target retention & LTV modeling with PSI drift & explainability
+├── 02_enterprise_rag_knowledge_engine/# Hybrid Dense-Sparse RRF vector search, anti-hallucination guardrails
+├── 03_financial_fraud_detection_system/# Balanced RF + Isolation Forest ensemble with cost-sensitive cutoff
+├── 04_retail_demand_forecasting_engine/# GBDT time-series regression & Monte Carlo inventory stockout simulation
+├── 05_automated_sql_analytics_agent/  # Text-to-SQL translation with Window Functions, RFM NTILE(4) & AST safety
 ├── 06_codewithharry_course_advanced_suite/
-│   ├── dragon_real_estate/            # Robust property valuation with Cap Rate & Cash-on-Cash ROI math
+│   ├── dragon_real_estate/            # Outlier-resistant valuation with Cap Rate, DSCR & Rate Sensitivity Matrix
 │   └── coders_analytics/              # Tech labor market regression & dynamic skill gap uplift model
 ├── Dockerfile                         # Production container definition
 ├── docker-compose.yml                 # Multi-service composition
 ├── requirements.txt                   # Locked dependencies
-├── run_all_tests.py                   # Master test runner across all 7 systems
+├── run_all_tests.py                   # Master test runner across all 8 suites (7 systems + dashboard)
+├── test_unified_dashboard.py          # Full HTTP integration test for all API endpoints
 └── unified_dashboard.py               # Central interactive web management console (FastAPI + Bootstrap)
 ```
 
@@ -36,13 +37,13 @@ industry-data-science-ai-portfolio/
 
 | # | System | Domain | Tech Stack | Production Highlights |
 |:---:|---|---|---|---|
-| **01** | **E-Commerce Churn & LTV Pipeline** | SaaS / Retail | Scikit-Learn, FastAPI, SciPy | Predicts churn probability and lifetime value ($). Implements **Population Stability Index (PSI)** and **Kolmogorov-Smirnov tests** to flag feature drift before model performance degrades. |
-| **02** | **Enterprise RAG Knowledge Engine** | NLP / Information Retrieval | Vector Search, Cosine Sim, FastAPI | Recursive semantic chunking (300 chars, 50 overlap) with strict **anti-hallucination guardrail thresholds** refusing ungrounded queries with exact chunk provenance. |
-| **03** | **Financial Fraud Detection Engine** | Fintech / Payments | Balanced Ensembles, PR-AUC | Solves extreme class imbalance (2% fraud) and computes a **business loss matrix** ($400 false negative vs $15 false positive) to identify the optimal profit-preserving cutoff. |
-| **04** | **Retail Demand & Inventory Optimizer** | Supply Chain / Ops | GBDT, Lag/Rolling Features | Multi-store lag ($t-1, t-7, t-14$) demand forecasting (WAPE < 10%) linked to **Safety Stock** ($SS = Z \cdot \sigma_d \cdot \sqrt{L}$), **Reorder Points (ROP)**, and **EOQ**. |
-| **05** | **Automated SQL Analytics Agent** | Business Intelligence | SQLite, Window Functions, CTEs | Generates production SQL with `LAG()` and `DENSE_RANK()`, validates AST read-only safety, and outputs structured Executive Briefs with business findings. |
-| **06A**| **Dragon Real Estate Valuation & ROI** | PropTech / Valuation | RobustScaler, GBDT, Financial Math | Property regression resistant to luxury price outliers, paired with an investment analysis layer computing **Gross Rent Yield**, **Cap Rate %**, and **Cash-on-Cash Return**. |
-| **06B**| **Coders Labor Market Intelligence** | HR Tech / Talent Analytics | ColumnTransformer, GBDT | Tech compensation regression across Delhi-NCR, Bangalore, and Remote roles with **dynamic skill gap uplift modeling** (+$\Delta$% for learning Cloud vs GenAI). |
+| **01** | **E-Commerce Churn & LTV Pipeline** | SaaS / Retail | Scikit-Learn, FastAPI, SciPy | Dual-target retention & LTV modeling with **Population Stability Index (PSI)** and **Kolmogorov-Smirnov tests** for drift detection, plus **Explainable AI feature attribution** ranking top churn drivers per user. |
+| **02** | **Enterprise Hybrid RAG Engine** | NLP / Information Retrieval | BM25, TF-IDF Cosine, FastAPI | **Hybrid Dense-Sparse retrieval** powered by **Reciprocal Rank Fusion (RRF, k=60)** and strict **anti-hallucination guardrail thresholds** refusing ungrounded queries with chunk citations. |
+| **03** | **Financial Fraud Detection Engine** | Fintech / Payments | Balanced RF, Isolation Forest | Solves extreme class imbalance (2% fraud) using a **hybrid supervised + unsupervised anomaly composite score** ($0.70 \times \text{BalancedRF} + 0.30 \times \text{IsoForest}$) optimizing a business loss matrix ($400 false negative vs $15 false positive). |
+| **04** | **Retail Demand & Inventory Optimizer** | Supply Chain / Ops | GBDT, Monte Carlo Simulation | Multi-store lag ($t-1, t-7, t-14$) demand forecasting linked to **Safety Stock**, **Reorder Points (ROP)**, and **1,000-trial empirical Monte Carlo stockout simulations** under stochastic lead times. |
+| **05** | **Automated SQL Analytics Agent** | Business Intelligence | SQLite, Window Functions, CTEs | Generates production SQL with `LAG()`, `DENSE_RANK()`, and **`NTILE(4)` RFM customer segmentation**, validates AST read-only safety, and outputs structured Executive Briefs with business findings. |
+| **06A**| **Dragon Real Estate Valuation & ROI** | PropTech / Valuation | RobustScaler, GBDT, Financial Math | Property regression resistant to luxury price outliers, paired with an investment underwriting layer computing **Gross Rent Yield**, **Cap Rate %**, **DSCR**, and a **Mortgage Interest Rate Sensitivity Analysis Matrix** (5.0% - 8.5%). |
+| **06B**| **Coders Labor Market Intelligence** | HR Tech / Talent Analytics | ColumnTransformer, GBDT | Tech compensation regression across Delhi-NCR and Bangalore with **dynamic skill gap uplift modeling** (+$\Delta$% for acquiring Cloud vs Generative AI competencies). |
 
 ---
 
@@ -65,7 +66,7 @@ pip install -r requirements.txt
 
 ### 2. Execute Test Suites
 
-Verify all 7 systems simultaneously via the master test runner:
+Verify all systems simultaneously via the master test runner:
 
 ```bash
 python run_all_tests.py
@@ -76,6 +77,7 @@ Expected output:
 ==========================================================
   PORTFOLIO VERIFICATION SUMMARY
 ==========================================================
+00 Unified Production API & Dashboard........ PASSED
 01 E-Commerce Churn & LTV Pipeline........... PASSED
 02 Enterprise RAG Knowledge Engine........... PASSED
 03 Financial Fraud Detection System.......... PASSED
@@ -84,7 +86,7 @@ Expected output:
 06A CWH Advanced Dragon Real Estate.......... PASSED
 06B CWH Advanced Coders Labor Market......... PASSED
 
-ALL 7 SYSTEMS VERIFIED AND 100% OPERATIONAL!
+ALL 8 SUITES (7 SYSTEMS + DASHBOARD) 100% OPERATIONAL!
 ```
 
 ---
@@ -97,7 +99,7 @@ To launch the centralized management dashboard:
 python unified_dashboard.py
 ```
 
-Navigate to `http://localhost:8080` to interactively run inferences, test data drift scenarios, query the RAG knowledge base, score financial transactions, and inspect generated SQL queries.
+Navigate to `http://localhost:8080` to interactively run inferences across all 7 systems: test explainable churn drivers, execute hybrid RRF knowledge search, score transactions with anomaly detection, simulate stockout risks, run RFM SQL segmentation, and stress-test property debt against fluctuating interest rates.
 
 ---
 

@@ -2,16 +2,15 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, Tuple
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import Ridge, ElasticNet
+from typing import Dict, Any, List, Optional
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 
 class DragonRealEstateEngine:
-    def __init__(self, data_path: str = None, model_path: str = None):
+    def __init__(self, data_path: Optional[str] = None, model_path: Optional[str] = None):
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if data_path is None:
             data_path = os.path.join(project_root, "data", "dragon_housing_data.csv")
@@ -86,7 +85,7 @@ class DragonRealEstateEngine:
         X_test = test_df[self.feature_columns]
         y_test = test_df["MEDV"]
 
-        # Production Scikit-Learn Pipeline
+        # Production Scikit-Learn Pipeline with Outlier-Resistant RobustScaler
         self.pipeline = Pipeline(steps=[
             ("imputer", SimpleImputer(strategy="median")),
             ("scaler", RobustScaler()),
@@ -100,10 +99,19 @@ class DragonRealEstateEngine:
         rmse = np.sqrt(mean_squared_error(y_test, preds))
         mape = mean_absolute_percentage_error(y_test, preds) * 100
 
+        # Extract feature importances
+        gbdt_model = self.pipeline.named_steps["model"]
+        importances = {
+            col: round(float(imp), 4)
+            for col, imp in zip(self.feature_columns, gbdt_model.feature_importances_)
+        }
+        sorted_importances = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
+
         self.metrics = {
             "r2_score": round(float(r2), 4),
             "rmse": round(float(rmse), 2),
-            "mape_pct": round(float(mape), 2)
+            "mape_pct": round(float(mape), 2),
+            "top_drivers": sorted_importances
         }
 
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
@@ -140,21 +148,22 @@ class DragonRealEstateEngine:
         # 3. Capitalization Rate (Cap Rate)
         cap_rate_pct = round((net_operating_income_noi / estimated_property_value) * 100.0, 2)
 
-        # 4. Cash-on-Cash Return with 20% down payment
+        # 4. Cash-on-Cash Return with specified down payment
         down_payment = estimated_property_value * down_payment_pct
         loan_amount = estimated_property_value - down_payment
-        # Annual mortgage payment (30-year fixed simple amortization estimate)
+        # Annual mortgage payment (30-year fixed amortization)
         r = (interest_rate_pct / 100.0) / 12
         n = 360
         monthly_mortgage = loan_amount * (r * (1 + r)**n) / ((1 + r)**n - 1)
         annual_debt_service = monthly_mortgage * 12
         cash_flow = net_operating_income_noi - annual_debt_service
         cash_on_cash_roi_pct = round((cash_flow / down_payment) * 100.0, 2)
+        dscr = round(net_operating_income_noi / annual_debt_service, 2) if annual_debt_service > 0 else 99.0
 
         # Investment Grade Rating
-        if cap_rate_pct >= 6.0 and cash_on_cash_roi_pct >= 7.0:
+        if cap_rate_pct >= 6.0 and cash_on_cash_roi_pct >= 7.0 and dscr >= 1.25:
             investment_grade = "TIER_A_STRONG_BUY"
-        elif cap_rate_pct >= 4.5:
+        elif cap_rate_pct >= 4.5 and dscr >= 1.10:
             investment_grade = "TIER_B_MODERATE_HOLD"
         else:
             investment_grade = "TIER_C_OVERVALUED_LOW_YIELD"
@@ -164,6 +173,46 @@ class DragonRealEstateEngine:
             "monthly_estimated_rent_usd": monthly_rent,
             "net_operating_income_noi_usd": round(net_operating_income_noi, 2),
             "cap_rate_pct": cap_rate_pct,
+            "monthly_mortgage_usd": round(monthly_mortgage, 2),
+            "annual_debt_service_usd": round(annual_debt_service, 2),
+            "net_annual_cash_flow_usd": round(cash_flow, 2),
             "cash_on_cash_roi_pct": cash_on_cash_roi_pct,
+            "debt_service_coverage_ratio_dscr": dscr,
             "investment_grade": investment_grade
         }
+
+    def calculate_interest_rate_sensitivity(self, property_features: dict, rates: Optional[List[float]] = None, down_payment_pct: float = 0.20) -> List[Dict[str, Any]]:
+        """
+        Stress-tests property cash flows and Debt Service Coverage Ratio (DSCR)
+        across variable macroeconomic interest rate regimes (e.g. 5.0% to 8.5%).
+        """
+        if rates is None:
+            rates = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5]
+
+        base_res = self.predict_valuation_and_roi(property_features, down_payment_pct=down_payment_pct, interest_rate_pct=6.5)
+        property_val = base_res["estimated_property_value_usd"]
+        noi = base_res["net_operating_income_noi_usd"]
+        down_payment = property_val * down_payment_pct
+        loan_amount = property_val - down_payment
+        n = 360
+
+        sensitivity = []
+        for rate in rates:
+            r = (rate / 100.0) / 12
+            monthly_mortgage = loan_amount * (r * (1 + r)**n) / ((1 + r)**n - 1)
+            annual_debt_service = monthly_mortgage * 12
+            net_cash_flow = noi - annual_debt_service
+            coc_roi = round((net_cash_flow / down_payment) * 100.0, 2)
+            dscr = round(noi / annual_debt_service, 2) if annual_debt_service > 0 else 99.0
+
+            sensitivity.append({
+                "interest_rate_pct": rate,
+                "monthly_mortgage_usd": round(monthly_mortgage, 2),
+                "annual_debt_service_usd": round(annual_debt_service, 2),
+                "net_annual_cash_flow_usd": round(net_cash_flow, 2),
+                "cash_on_cash_roi_pct": coc_roi,
+                "debt_service_coverage_ratio_dscr": dscr,
+                "is_dscr_healthy": bool(dscr >= 1.25)
+            })
+
+        return sensitivity

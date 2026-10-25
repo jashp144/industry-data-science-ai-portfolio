@@ -2,7 +2,7 @@ import os
 from typing import Dict, Any, List
 from src.document_loader import DocumentLoader
 from src.text_chunker import RecursiveCharacterTextChunker
-from src.vector_store import VectorStore
+from src.vector_store import HybridVectorStore
 
 class RAGEngine:
     def __init__(self, index_path: str = None):
@@ -10,13 +10,12 @@ class RAGEngine:
             project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             index_path = os.path.join(project_root, "data", "rag_index.pkl")
         self.index_path = index_path
-        self.vector_store = VectorStore()
+        self.vector_store = HybridVectorStore(rrf_k=60)
         self.min_similarity_threshold = 0.12
 
     def initialize_knowledge_base(self):
-        """Loads raw documents, chunks them, and builds persistent vector index."""
+        """Loads raw documents, chunks them, and builds persistent hybrid vector index."""
         loader = DocumentLoader()
-        # If directory empty, seed sample knowledge base
         docs = loader.load_directory()
         if not docs:
             loader.create_sample_knowledge_base()
@@ -36,10 +35,10 @@ class RAGEngine:
             self.initialize_knowledge_base()
 
     def query(self, user_query: str, top_k: int = 3) -> Dict[str, Any]:
-        """Executes RAG retrieval, ranks context, and returns synthesized verified response."""
+        """Executes Hybrid RRF retrieval, ranks context, and returns synthesized verified response."""
         self.load_index()
 
-        retrieved_results = self.vector_store.similarity_search_with_score(user_query, top_k=top_k)
+        retrieved_results = self.vector_store.hybrid_search_with_rrf(user_query, top_k=top_k)
         if not retrieved_results:
             return {
                 "query": user_query,
@@ -49,29 +48,30 @@ class RAGEngine:
                 "guardrail_status": "NO_MATCH"
             }
 
-        top_doc, top_score = retrieved_results[0]
+        top_doc, top_score, top_meta = retrieved_results[0]
 
-        # Hallucination Guardrail Check
+        # Anti-Hallucination Guardrail Check
         if top_score < self.min_similarity_threshold:
             return {
                 "query": user_query,
                 "answer": "The enterprise knowledge base does not contain sufficient verified context to answer this query accurately.",
                 "confidence_score": top_score,
                 "sources": [],
+                "retrieval_method": "Hybrid Dense-Sparse RRF",
                 "guardrail_status": "REFUSAL_UNVERIFIED_CONTEXT"
             }
 
-        # Formulate synthesized extractive response
         citations = []
         context_snippets = []
-        for doc, score in retrieved_results:
+        retrieval_stats = []
+        for doc, score, meta in retrieved_results:
             if score >= self.min_similarity_threshold:
                 source_name = doc.metadata.get("source", "unknown")
                 chunk_id = doc.metadata.get("chunk_id", "")
-                citations.append(f"{source_name} ({chunk_id}) [Relevance: {score:.2f}]")
+                citations.append(f"{source_name} ({chunk_id}) [Score: {score:.2f}, RRF: {meta['rrf_score']:.4f}]")
                 context_snippets.append(doc.page_content)
+                retrieval_stats.append(meta)
 
-        # Synthesize clear answer directly backed by top retrieved context
         synthesized_answer = (
             f"Based on verified enterprise documentation: {top_doc.page_content.strip()} "
             f"Referenced from {top_doc.metadata.get('source')}."
@@ -81,6 +81,8 @@ class RAGEngine:
             "query": user_query,
             "answer": synthesized_answer,
             "confidence_score": top_score,
+            "retrieval_method": "Hybrid Dense-Sparse RRF (Reciprocal Rank Fusion)",
+            "top_ranking_metrics": top_meta,
             "guardrail_status": "VERIFIED_ACCURATE",
             "sources": citations,
             "retrieved_contexts": context_snippets

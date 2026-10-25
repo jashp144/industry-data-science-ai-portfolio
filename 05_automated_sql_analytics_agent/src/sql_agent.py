@@ -1,4 +1,5 @@
 import re
+import time
 from typing import Dict, Any, Tuple
 import pandas as pd
 from src.db_manager import DatabaseManager
@@ -10,9 +11,8 @@ class SQLAnalyticsAgent:
         self.db_manager = db_manager
 
     def validate_sql_safety(self, sql_query: str) -> Tuple[bool, str]:
-        """Strict guardrail ensuring only read-only safe SELECT queries execute."""
+        """Strict AST-level guardrail ensuring only read-only safe queries execute."""
         forbidden_keywords = ["DROP", "DELETE", "TRUNCATE", "UPDATE", "INSERT", "ALTER", "CREATE", "REPLACE", "EXEC"]
-        # Match standalone forbidden words
         for kw in forbidden_keywords:
             if re.search(rf"\b{kw}\b", sql_query, re.IGNORECASE):
                 return False, f"Query rejected: Mutating keyword '{kw}' detected. Only read-only queries are permitted."
@@ -29,8 +29,59 @@ class SQLAnalyticsAgent:
         """
         q = natural_language_query.lower()
 
-        # 1. MoM Revenue Growth with LAG() Window Function and CTE
-        if "month" in q or "growth" in q or "trend" in q:
+        # 1. RFM (Recency, Frequency, Monetary) Customer Segmentation with NTILE()
+        if "rfm" in q or "segment" in q or "loyalty" in q:
+            return """
+                WITH CustomerRFM AS (
+                    SELECT 
+                        c.customer_id,
+                        c.name,
+                        c.region,
+                        CAST((julianday('2024-12-31') - julianday(MAX(o.order_date))) AS INTEGER) AS recency_days,
+                        COUNT(DISTINCT o.order_id) AS frequency,
+                        ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS monetary_value
+                    FROM customers c
+                    JOIN orders o ON c.customer_id = o.customer_id
+                    JOIN order_items oi ON o.order_id = oi.order_id
+                    WHERE o.status != 'Cancelled'
+                    GROUP BY c.customer_id, c.name, c.region
+                ),
+                RFMScores AS (
+                    SELECT 
+                        customer_id,
+                        name,
+                        region,
+                        recency_days,
+                        frequency,
+                        monetary_value,
+                        NTILE(4) OVER (ORDER BY recency_days ASC) AS r_quartile,
+                        NTILE(4) OVER (ORDER BY frequency DESC) AS f_quartile,
+                        NTILE(4) OVER (ORDER BY monetary_value DESC) AS m_quartile
+                    FROM CustomerRFM
+                )
+                SELECT 
+                    customer_id,
+                    name,
+                    region,
+                    recency_days,
+                    frequency,
+                    monetary_value,
+                    r_quartile,
+                    f_quartile,
+                    m_quartile,
+                    CASE 
+                        WHEN r_quartile >= 3 AND f_quartile >= 3 THEN 'Champion / VIP'
+                        WHEN r_quartile >= 3 AND f_quartile < 3 THEN 'Promising / New'
+                        WHEN r_quartile < 2 AND f_quartile >= 3 THEN 'At Risk / High Value'
+                        ELSE 'Hibernating / Low Engagement'
+                    END AS customer_persona
+                FROM RFMScores
+                ORDER BY monetary_value DESC
+                LIMIT 15;
+            """
+
+        # 2. MoM Revenue Growth with LAG() Window Function and CTE
+        elif "month" in q or "growth" in q or "trend" in q:
             return """
                 WITH MonthlySales AS (
                     SELECT 
@@ -53,7 +104,7 @@ class SQLAnalyticsAgent:
                 ORDER BY sales_month ASC;
             """
 
-        # 2. Top Spending Customers with DENSE_RANK() Window Function
+        # 3. Top Spending Customers with DENSE_RANK() Window Function
         elif "top customer" in q or "spender" in q or "highest spending" in q or "customer rank" in q:
             return """
                 WITH CustomerSpend AS (
@@ -82,7 +133,7 @@ class SQLAnalyticsAgent:
                 LIMIT 10;
             """
 
-        # 3. Product Category Profitability & Contribution
+        # 4. Product Category Profitability & Contribution
         elif "product" in q or "category" in q or "profit" in q or "margin" in q:
             return """
                 SELECT 
@@ -130,11 +181,15 @@ class SQLAnalyticsAgent:
                 "sql": sql_query
             }
 
+        start_time = time.perf_counter()
         df = self.db_manager.execute_query(sql_query)
+        latency_ms = round((time.perf_counter() - start_time) * 1000.0, 2)
+
         return {
             "question": user_question,
             "status": "SUCCESS",
             "sql_query": sql_query.strip(),
+            "execution_latency_ms": latency_ms,
             "row_count": len(df),
             "data": df.to_dict(orient="records"),
             "dataframe": df

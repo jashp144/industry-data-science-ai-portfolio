@@ -1,4 +1,5 @@
 import math
+import numpy as np
 from typing import Dict, Any
 
 class InventoryOptimizer:
@@ -14,6 +15,40 @@ class InventoryOptimizer:
         z_scores = {0.90: 1.28, 0.95: 1.645, 0.98: 2.05, 0.99: 2.33}
         self.z = z_scores.get(service_level, 1.645)
 
+    def run_monte_carlo_simulation(
+        self,
+        predicted_daily_demand: float,
+        demand_std_dev: float,
+        current_inventory: int,
+        lead_time_days: int = 5,
+        n_simulations: int = 1000,
+        random_state: int = 42
+    ) -> Dict[str, float]:
+        """
+        Runs Monte Carlo empirical simulations across lead-time demand cycles
+        to quantify exact probabilistic stockout distributions.
+        """
+        np.random.seed(random_state)
+        # Simulate daily demands across lead time
+        simulated_daily = np.random.normal(
+            loc=predicted_daily_demand,
+            scale=max(1.0, demand_std_dev),
+            size=(n_simulations, lead_time_days)
+        ).clip(0, None)
+
+        total_lead_time_demands = np.sum(simulated_daily, axis=1)
+        stockouts = total_lead_time_demands > current_inventory
+        empirical_stockout_prob = float(np.mean(stockouts))
+
+        p95_demand = float(np.percentile(total_lead_time_demands, 95))
+        p99_demand = float(np.percentile(total_lead_time_demands, 99))
+
+        return {
+            "empirical_stockout_probability": round(empirical_stockout_prob, 4),
+            "p95_lead_time_demand": round(p95_demand, 1),
+            "p99_lead_time_demand": round(p99_demand, 1)
+        }
+
     def calculate_replenishment_plan(
         self,
         predicted_daily_demand: float,
@@ -25,38 +60,39 @@ class InventoryOptimizer:
         unit_cost: float = 30.0
     ) -> Dict[str, Any]:
         """
-        Calculates optimal safety stock, reorder point (ROP), and automated restocking purchase quantity.
+        Calculates analytical safety stock, reorder point (ROP), economic order quantity (EOQ),
+        and runs Monte Carlo empirical risk simulations.
         """
-        # Safety Stock formula: SS = Z * sigma_demand * sqrt(lead_time)
         safety_stock = math.ceil(self.z * demand_std_dev * math.sqrt(lead_time_days))
-        
-        # Lead time demand
         lead_time_demand = math.ceil(predicted_daily_demand * lead_time_days)
-        
-        # Reorder Point (ROP): ROP = Lead Time Demand + Safety Stock
         reorder_point = lead_time_demand + safety_stock
 
-        # Annual demand estimate (365 days)
         annual_demand = predicted_daily_demand * 365
         annual_holding_cost_per_unit = unit_cost * holding_cost_annual_pct
 
-        # Economic Order Quantity (EOQ): sqrt((2 * D * S) / H)
         if annual_holding_cost_per_unit > 0:
             eoq = math.ceil(math.sqrt((2 * annual_demand * ordering_cost_fixed) / annual_holding_cost_per_unit))
         else:
             eoq = math.ceil(lead_time_demand * 2)
 
-        # Restock Decision
         needs_reorder = current_on_hand_inventory <= reorder_point
         recommended_order_quantity = eoq if needs_reorder else 0
 
-        # Estimated stockout probability given current inventory
-        if current_on_hand_inventory >= reorder_point:
+        # Monte Carlo Risk Quantification
+        mc_results = self.run_monte_carlo_simulation(
+            predicted_daily_demand=predicted_daily_demand,
+            demand_std_dev=demand_std_dev,
+            current_inventory=current_on_hand_inventory,
+            lead_time_days=lead_time_days
+        )
+
+        stockout_prob = mc_results["empirical_stockout_probability"]
+        if stockout_prob < 0.05:
             stockout_risk_level = "LOW (< 5%)"
-        elif current_on_hand_inventory > lead_time_demand:
-            stockout_risk_level = "MODERATE (5% - 20%)"
+        elif stockout_prob < 0.25:
+            stockout_risk_level = "MODERATE (5% - 25%)"
         else:
-            stockout_risk_level = "CRITICAL (> 50% imminent stockout)"
+            stockout_risk_level = "CRITICAL (High Risk of Stockout)"
 
         return {
             "predicted_daily_demand": round(predicted_daily_demand, 1),
@@ -68,6 +104,7 @@ class InventoryOptimizer:
             "recommended_order_quantity": recommended_order_quantity,
             "economic_order_quantity_eoq": eoq,
             "stockout_risk": stockout_risk_level,
+            "monte_carlo_simulation": mc_results,
             "action_item": (
                 f"Trigger PO for {recommended_order_quantity} units immediately!"
                 if needs_reorder else "Inventory levels sufficient; no action needed."

@@ -28,6 +28,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Execute Master Test Suite Across All 5 Systems
+      - name: Execute Master Test Suite Across All Systems
         run: |
           python run_all_tests.py

@@ -18,8 +18,19 @@ class ExecutiveInsightsGenerator:
         findings = []
         recommendations = []
 
-        # 1. MoM Analysis Insights
-        if "mom_growth_pct" in cols:
+        # 1. RFM Persona Insights
+        if "customer_persona" in cols:
+            persona_counts = df["customer_persona"].value_counts().to_dict()
+            total_rev = df["monetary_value"].sum()
+            findings.append(f"RFM Segmentation identified {len(df)} key client accounts representing ${total_rev:,.2f} in lifetime value.")
+            for persona, count in persona_counts.items():
+                findings.append(f"Segment '{persona}': {count} enterprise accounts.")
+
+            recommendations.append("Deploy white-glove retention perks and executive account reviews for all accounts in 'Champion / VIP'.")
+            recommendations.append("Launch urgent re-activation win-back incentives for accounts flagged as 'At Risk / High Value'.")
+
+        # 2. MoM Analysis Insights
+        elif "mom_growth_pct" in cols:
             valid_growth = df["mom_growth_pct"].dropna()
             avg_growth = valid_growth.mean()
             best_month = df.loc[df["total_revenue"].idxmax()]
@@ -30,7 +41,7 @@ class ExecutiveInsightsGenerator:
             recommendations.append("Replicate promotional campaigns from peak months to counter seasonal dips.")
             recommendations.append("Investigate negative growth quarters for supply-chain or discount cannibalization issues.")
 
-        # 2. Customer Spend & Ranking Insights
+        # 3. Customer Spend & Ranking Insights
         elif "spend_rank" in cols and "total_spend" in cols:
             top_client = df.iloc[0]
             total_top_10 = df["total_spend"].sum()
@@ -40,7 +51,7 @@ class ExecutiveInsightsGenerator:
             recommendations.append("Assign dedicated Customer Success Managers (CSMs) to customers in the top 3 spend ranks.")
             recommendations.append("Implement high-touch VIP retention contracts to mitigate enterprise churn risk.")
 
-        # 3. Product Profitability Insights
+        # 4. Product Profitability Insights
         elif "profit_margin_pct" in cols:
             highest_margin = df.loc[df["profit_margin_pct"].idxmax()]
             lowest_margin = df.loc[df["profit_margin_pct"].idxmin()]
@@ -50,7 +61,7 @@ class ExecutiveInsightsGenerator:
             recommendations.append(f"Increase ad-spend allocation toward high-margin '{highest_margin['category']}' products.")
             recommendations.append(f"Review supplier unit costs for '{lowest_margin['category']}' to renegotiate volume discount tiers.")
 
-        # 4. Regional Distribution
+        # 5. Regional Distribution
         elif "regional_revenue" in cols:
             top_region = df.iloc[0]
             findings.append(f"Leading market is {top_region['region']} ({top_region['segment']} segment) generating ${top_region['regional_revenue']:,.2f}.")
@@ -58,6 +69,7 @@ class ExecutiveInsightsGenerator:
 
         return {
             "executive_summary": "Automated SQL Business Intelligence Synthesis",
+            "execution_latency_ms": query_result.get("execution_latency_ms", 0.0),
             "analyzed_rows": len(df),
             "key_findings": findings,
             "actionable_recommendations": recommendations

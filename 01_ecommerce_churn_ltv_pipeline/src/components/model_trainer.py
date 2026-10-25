@@ -15,15 +15,15 @@ class ModelTrainerConfig:
     churn_model_path: str = os.path.join(project_root, "artifacts", "churn_model.pkl")
     ltv_model_path: str = os.path.join(project_root, "artifacts", "ltv_model.pkl")
     metrics_path: str = os.path.join(project_root, "artifacts", "metrics.json")
+    feature_meta_path: str = os.path.join(project_root, "artifacts", "feature_importance.json")
 
 class ModelTrainer:
     def __init__(self):
         self.config = ModelTrainerConfig()
 
-    def initiate_model_trainer(self, train_array: np.ndarray, test_array: np.ndarray):
+    def initiate_model_trainer(self, train_array: np.ndarray, test_array: np.ndarray, feature_names: list = None):
         try:
             logger.info("Splitting train and test input arrays into features and dual targets (Churn & LTV).")
-            # Features are everything except last 2 columns
             X_train = train_array[:, :-2]
             y_churn_train = train_array[:, -2]
             y_ltv_train = train_array[:, -1]
@@ -32,12 +32,12 @@ class ModelTrainer:
             y_churn_test = test_array[:, -2]
             y_ltv_test = test_array[:, -1]
 
-            # 1. Train Churn Classifier
+            # 1. Train Churn Classifier (GradientBoosting as primary enterprise model)
             logger.info("Training Churn Classifier models...")
             churn_models = {
-                "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
+                "GradientBoosting": GradientBoostingClassifier(n_estimators=120, learning_rate=0.08, max_depth=4, random_state=42),
                 "RandomForest": RandomForestClassifier(n_estimators=100, max_depth=8, random_state=42),
-                "GradientBoosting": GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=4, random_state=42)
+                "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42)
             }
 
             best_churn_score = -1.0
@@ -72,11 +72,27 @@ class ModelTrainer:
             logger.info(f"Best Churn Model: {best_churn_name} with ROC-AUC: {best_churn_score:.4f}")
             save_object(self.config.churn_model_path, best_churn_model)
 
+            # Feature Importance / Explainable AI (XAI)
+            feature_importance_dict = {}
+            if hasattr(best_churn_model, "feature_importances_"):
+                importances = best_churn_model.feature_importances_
+                names = feature_names if feature_names and len(feature_names) == len(importances) else [f"feature_{i}" for i in range(len(importances))]
+                sorted_idx = np.argsort(importances)[::-1]
+                feature_importance_dict = {names[i]: round(float(importances[i]), 4) for i in sorted_idx}
+            elif hasattr(best_churn_model, "coef_"):
+                coefs = np.abs(best_churn_model.coef_[0])
+                names = feature_names if feature_names and len(feature_names) == len(coefs) else [f"feature_{i}" for i in range(len(coefs))]
+                sorted_idx = np.argsort(coefs)[::-1]
+                feature_importance_dict = {names[i]: round(float(coefs[i]), 4) for i in sorted_idx}
+
+            with open(self.config.feature_meta_path, "w") as f:
+                json.dump(feature_importance_dict, f, indent=2)
+
             # 2. Train LTV Regressor
             logger.info("Training Lifetime Value (LTV) Regressor...")
             ltv_models = {
-                "Ridge": Ridge(),
-                "GradientBoostingRegressor": GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=4, random_state=42)
+                "GradientBoostingRegressor": GradientBoostingRegressor(n_estimators=120, learning_rate=0.08, max_depth=4, random_state=42),
+                "Ridge": Ridge()
             }
 
             best_ltv_score = -1.0
@@ -109,6 +125,7 @@ class ModelTrainer:
             all_metrics = {
                 "churn_models": churn_metrics,
                 "best_churn_model": best_churn_name,
+                "top_feature_importances": feature_importance_dict,
                 "ltv_models": ltv_metrics,
                 "best_ltv_model": best_ltv_name
             }

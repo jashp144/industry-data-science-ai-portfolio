@@ -4,13 +4,13 @@ import unittest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.fraud_detector import FraudDetector
+from src.fraud_detector import HybridFraudDetector
 
 class TestFraudDetection(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print("\n=== Training & Optimizing Fraud Detection System ===")
-        cls.detector = FraudDetector()
+        print("\n=== Training & Optimizing Hybrid Fraud Detection System ===")
+        cls.detector = HybridFraudDetector()
         cls.metrics = cls.detector.train_and_optimize()
         print("Model Performance & Cost Metrics:", cls.metrics)
         assert cls.metrics["pr_auc"] > 0.60, "PR-AUC below threshold"
@@ -28,7 +28,7 @@ class TestFraudDetection(unittest.TestCase):
         res = self.detector.score_transaction(legit_tx)
         print("Legit Transaction Result:", res)
         self.assertEqual(res["decision"], "APPROVE")
-        self.assertLess(res["fraud_probability"], self.detector.optimal_threshold)
+        self.assertLess(res["composite_risk_score"], self.detector.optimal_threshold)
 
     def test_fraudulent_transaction_intervention(self):
         print("\n=== Testing High-Risk Fraudulent Transaction ===")
@@ -42,7 +42,7 @@ class TestFraudDetection(unittest.TestCase):
         res = self.detector.score_transaction(fraud_tx)
         print("Fraud Transaction Result:", res)
         self.assertIn(res["decision"], ["IMMEDIATE_DECLINE", "STEP_UP_AUTHENTICATION"])
-        self.assertGreaterEqual(res["fraud_probability"], self.detector.optimal_threshold)
+        self.assertGreaterEqual(res["composite_risk_score"], self.detector.optimal_threshold)
 
     def test_cost_savings(self):
         print("\n=== Testing Business Cost Savings Metric ===")

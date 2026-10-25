@@ -3,6 +3,7 @@ import sys
 import os
 
 projects = [
+    ("00 Unified Production API & Dashboard", "test_unified_dashboard.py"),
     ("01 E-Commerce Churn & LTV Pipeline", "01_ecommerce_churn_ltv_pipeline/test_pipeline.py"),
     ("02 Enterprise RAG Knowledge Engine", "02_enterprise_rag_knowledge_engine/test_rag.py"),
     ("03 Financial Fraud Detection System", "03_financial_fraud_detection_system/test_fraud.py"),
@@ -42,6 +43,6 @@ for name, status in results:
     print(f"{name:.<45} {status}")
 
 if all_passed:
-    print("\nALL 7 SYSTEMS VERIFIED AND 100% OPERATIONAL!")
+    print("\nALL 8 SUITES (7 SYSTEMS + DASHBOARD) 100% OPERATIONAL!")
 else:
     print("\nSome tests failed. Review logs above.")

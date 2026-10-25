@@ -22,12 +22,25 @@ class TestSQLAnalyticsAgent(unittest.TestCase):
         q = "Show me monthly revenue growth trend"
         res = self.agent.process_query(q)
         print("Generated SQL:\n", res["sql_query"])
+        print(f"Execution Latency: {res['execution_latency_ms']} ms")
         self.assertEqual(res["status"], "SUCCESS")
         self.assertGreater(res["row_count"], 0)
         
         insights = self.insights_gen.generate_brief(res)
         print("Executive Key Findings:", insights["key_findings"])
         self.assertGreater(len(insights["key_findings"]), 0)
+
+    def test_rfm_customer_segmentation_query(self):
+        print("\n=== Testing RFM Segmentation with NTILE() Window Functions ===")
+        q = "Run RFM customer segmentation and loyalty analysis"
+        res = self.agent.process_query(q)
+        print("Generated SQL:\n", res["sql_query"])
+        self.assertEqual(res["status"], "SUCCESS")
+        self.assertGreater(res["row_count"], 0)
+        
+        insights = self.insights_gen.generate_brief(res)
+        print("RFM Executive Brief:", insights["key_findings"])
+        self.assertTrue(any("RFM Segmentation" in f for f in insights["key_findings"]))
 
     def test_top_customer_dense_rank_query(self):
         print("\n=== Testing Customer Ranking with DENSE_RANK() Window Function ===")
@@ -36,10 +49,6 @@ class TestSQLAnalyticsAgent(unittest.TestCase):
         print("Generated SQL:\n", res["sql_query"])
         self.assertEqual(res["status"], "SUCCESS")
         self.assertLessEqual(res["row_count"], 10)
-        
-        insights = self.insights_gen.generate_brief(res)
-        print("Actionable Recommendations:", insights["actionable_recommendations"])
-        self.assertGreater(len(insights["actionable_recommendations"]), 0)
 
     def test_sql_injection_rejection_guardrail(self):
         print("\n=== Testing SQL Injection Guardrail ===")

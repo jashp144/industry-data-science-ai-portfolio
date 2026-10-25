@@ -45,6 +45,7 @@ class RAGEngine:
                 "answer": "No relevant documents found in knowledge base.",
                 "confidence_score": 0.0,
                 "sources": [],
+                "chunks_breakdown": [],
                 "guardrail_status": "NO_MATCH"
             }
 
@@ -57,20 +58,29 @@ class RAGEngine:
                 "answer": "The enterprise knowledge base does not contain sufficient verified context to answer this query accurately.",
                 "confidence_score": top_score,
                 "sources": [],
+                "chunks_breakdown": [],
                 "retrieval_method": "Hybrid Dense-Sparse RRF",
                 "guardrail_status": "REFUSAL_UNVERIFIED_CONTEXT"
             }
 
         citations = []
         context_snippets = []
-        retrieval_stats = []
+        chunks_breakdown = []
         for doc, score, meta in retrieved_results:
             if score >= self.min_similarity_threshold:
                 source_name = doc.metadata.get("source", "unknown")
                 chunk_id = doc.metadata.get("chunk_id", "")
                 citations.append(f"{source_name} ({chunk_id}) [Score: {score:.2f}, RRF: {meta['rrf_score']:.4f}]")
                 context_snippets.append(doc.page_content)
-                retrieval_stats.append(meta)
+                chunks_breakdown.append({
+                    "chunk_id": chunk_id,
+                    "source": source_name,
+                    "score": round(score, 4),
+                    "rrf_score": meta.get("rrf_score", 0.0),
+                    "dense_similarity": meta.get("dense_similarity", 0.0),
+                    "sparse_keyword_match": meta.get("sparse_keyword_match", 0.0),
+                    "content_preview": doc.page_content[:180] + ("..." if len(doc.page_content) > 180 else "")
+                })
 
         synthesized_answer = (
             f"Based on verified enterprise documentation: {top_doc.page_content.strip()} "
@@ -85,5 +95,6 @@ class RAGEngine:
             "top_ranking_metrics": top_meta,
             "guardrail_status": "VERIFIED_ACCURATE",
             "sources": citations,
-            "retrieved_contexts": context_snippets
+            "retrieved_contexts": context_snippets,
+            "chunks_breakdown": chunks_breakdown
         }

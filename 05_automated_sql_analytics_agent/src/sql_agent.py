@@ -1,6 +1,6 @@
 import re
 import time
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 import pandas as pd
 from src.db_manager import DatabaseManager
 
@@ -22,6 +22,25 @@ class SQLAnalyticsAgent:
             return False, "Query rejected: Query must start with SELECT or WITH."
 
         return True, "Valid safe query."
+
+    def get_database_schema(self) -> Dict[str, Any]:
+        """Retrieves table names, column definitions, and row counts from SQLite metadata."""
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+        tables = [row[0] for row in cursor.fetchall()]
+        schema_dict = {}
+        for tbl in tables:
+            cursor.execute(f"PRAGMA table_info({tbl});")
+            cols = [{"cid": col[0], "name": col[1], "type": col[2], "notnull": bool(col[3]), "pk": bool(col[5])} for col in cursor.fetchall()]
+            cursor.execute(f"SELECT COUNT(*) FROM {tbl};")
+            row_count = cursor.fetchone()[0]
+            schema_dict[tbl] = {
+                "columns": cols,
+                "row_count": row_count
+            }
+        conn.close()
+        return schema_dict
 
     def translate_question_to_sql(self, natural_language_query: str) -> str:
         """
@@ -104,30 +123,30 @@ class SQLAnalyticsAgent:
                 ORDER BY sales_month ASC;
             """
 
-        # 3. Top Spending Customers with DENSE_RANK() Window Function
-        elif "top customer" in q or "spender" in q or "highest spending" in q or "customer rank" in q:
+        # 3. High-Value Customer Identification with DENSE_RANK() Window Function
+        elif "top" in q or "customer" in q or "spenders" in q:
             return """
                 WITH CustomerSpend AS (
                     SELECT 
                         c.customer_id,
                         c.name,
-                        c.region,
                         c.segment,
-                        ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS total_spend,
-                        COUNT(DISTINCT o.order_id) AS total_orders
+                        c.region,
+                        COUNT(DISTINCT o.order_id) AS total_orders,
+                        ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS total_spend
                     FROM customers c
                     JOIN orders o ON c.customer_id = o.customer_id
                     JOIN order_items oi ON o.order_id = oi.order_id
                     WHERE o.status != 'Cancelled'
-                    GROUP BY c.customer_id, c.name, c.region, c.segment
+                    GROUP BY c.customer_id, c.name, c.segment, c.region
                 )
                 SELECT 
                     customer_id,
                     name,
-                    region,
                     segment,
-                    total_spend,
+                    region,
                     total_orders,
+                    total_spend,
                     DENSE_RANK() OVER (ORDER BY total_spend DESC) AS spend_rank
                 FROM CustomerSpend
                 LIMIT 10;
@@ -171,26 +190,41 @@ class SQLAnalyticsAgent:
             """
 
     def process_query(self, user_question: str) -> Dict[str, Any]:
-        sql_query = self.translate_question_to_sql(user_question)
+        clean_input = user_question.strip()
+        upper_input = clean_input.upper()
+        if upper_input.startswith("SELECT") or upper_input.startswith("WITH"):
+            sql_query = clean_input
+        else:
+            sql_query = self.translate_question_to_sql(user_question)
+
         is_safe, msg = self.validate_sql_safety(sql_query)
         if not is_safe:
             return {
                 "question": user_question,
                 "status": "REJECTED",
                 "error": msg,
-                "sql": sql_query
+                "sql_query": sql_query
             }
 
         start_time = time.perf_counter()
-        df = self.db_manager.execute_query(sql_query)
-        latency_ms = round((time.perf_counter() - start_time) * 1000.0, 2)
+        try:
+            df = self.db_manager.execute_query(sql_query)
+            latency_ms = round((time.perf_counter() - start_time) * 1000.0, 2)
 
-        return {
-            "question": user_question,
-            "status": "SUCCESS",
-            "sql_query": sql_query.strip(),
-            "execution_latency_ms": latency_ms,
-            "row_count": len(df),
-            "data": df.to_dict(orient="records"),
-            "dataframe": df
-        }
+            return {
+                "question": user_question,
+                "status": "SUCCESS",
+                "sql_query": sql_query.strip(),
+                "execution_latency_ms": latency_ms,
+                "row_count": len(df),
+                "columns": list(df.columns),
+                "data": df.to_dict(orient="records"),
+                "dataframe": df
+            }
+        except Exception as e:
+            return {
+                "question": user_question,
+                "status": "ERROR",
+                "error": str(e),
+                "sql_query": sql_query.strip()
+            }

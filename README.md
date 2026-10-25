@@ -27,8 +27,8 @@ industry-data-science-ai-portfolio/
 ├── docker-compose.yml                 # Multi-service composition
 ├── requirements.txt                   # Locked dependencies
 ├── run_all_tests.py                   # Master test runner across all 8 suites (7 systems + dashboard)
-├── test_unified_dashboard.py          # Full HTTP integration test for all API endpoints
-└── unified_dashboard.py               # Central interactive web management console (FastAPI + Bootstrap)
+├── test_unified_dashboard.py          # Full HTTP integration test for all API endpoints & telemetry
+└── unified_dashboard.py               # Mobbin-grade SaaS control center (FastAPI + Chart.js + Bootstrap)
 ```
 
 ---
@@ -44,6 +44,24 @@ industry-data-science-ai-portfolio/
 | **05** | **Automated SQL Analytics Agent** | Business Intelligence | SQLite, Window Functions, CTEs | Generates production SQL with `LAG()`, `DENSE_RANK()`, and **`NTILE(4)` RFM customer segmentation**, validates AST read-only safety, and outputs structured Executive Briefs with business findings. |
 | **06A**| **Dragon Real Estate Valuation & ROI** | PropTech / Valuation | RobustScaler, GBDT, Financial Math | Property regression resistant to luxury price outliers, paired with an investment underwriting layer computing **Gross Rent Yield**, **Cap Rate %**, **DSCR**, and a **Mortgage Interest Rate Sensitivity Analysis Matrix** (5.0% - 8.5%). |
 | **06B**| **Coders Labor Market Intelligence** | HR Tech / Talent Analytics | ColumnTransformer, GBDT | Tech compensation regression across Delhi-NCR and Bangalore with **dynamic skill gap uplift modeling** (+$\Delta$% for acquiring Cloud vs Generative AI competencies). |
+
+---
+
+## Mobbin-Grade Interactive SaaS Command Center
+
+The centralized control center (`unified_dashboard.py`) delivers a production-grade Web UI modeled after modern fintech and developer tools (Mobbin, Stripe, Linear, Datadog):
+
+- **Real-Time System Telemetry Banner**: Displays live P95 latency (sub-15ms), statistical drift metrics (PSI < 0.10 nominal), monthly fraud loss avoidance (\$12,480/mo), and automated CI/CD status (8/8 passing).
+- **Interactive Visualizations for Every System**:
+  - **Churn & LTV**: Real-time circular risk gauge, horizontal XAI driver attribution bar chart, and projected 12-month LTV.
+  - **Hybrid RAG**: Multi-metric chunk comparison chart (Dense Similarity vs Sparse BM25 vs RRF), expandable citation provenance, and anti-hallucination verification badges.
+  - **Fraud & Anomaly**: Supervised probability vs Isolation Forest anomaly score vs optimal cost cutoff threshold chart with recommended actions.
+  - **Demand Forecasting**: 7-day historical + next-period forecast line chart with confidence intervals, paired with a 1,000-trial Monte Carlo empirical stockout histogram.
+  - **SQL Analytics Agent**: Interactive Schema Explorer modal, query presets, custom read-only SQL editor, execution latency profiling, and dynamic table rendering.
+  - **Real Estate Debt Stress-Testing**: Mortgage Interest Rate Sensitivity curve (5.0% - 8.5%) plotting monthly debt service against net operating cash flow.
+  - **Talent Market Intelligence**: Salary benchmark distribution chart and skill uplift comparison bar chart.
+- **One-Click Presets**: Pre-populated scenarios for instant interactive demonstration during technical interviews.
+- **Audit Export**: Single-click export of system health, active models, and operational metrics into JSON.
 
 ---
 
@@ -99,7 +117,7 @@ To launch the centralized management dashboard:
 python unified_dashboard.py
 ```
 
-Navigate to `http://localhost:8080` to interactively run inferences across all 7 systems: test explainable churn drivers, execute hybrid RRF knowledge search, score transactions with anomaly detection, simulate stockout risks, run RFM SQL segmentation, and stress-test property debt against fluctuating interest rates.
+Navigate to `http://localhost:8080` to access the interactive console and test all 7 production pipelines with live visualizations.
 
 ---
 

@@ -12,11 +12,43 @@ class TestUnifiedDashboard(unittest.TestCase):
     def setUpClass(cls):
         cls.client = TestClient(app)
 
-    def test_dashboard_index(self):
+    def test_dashboard_index_and_timing_header(self):
         res = self.client.get("/")
         self.assertEqual(res.status_code, 200)
-        self.assertIn("Production Data Science & AI Portfolio", res.text)
-        self.assertIn("7/7 Systems Online", res.text)
+        self.assertIn("Enterprise AI & Machine Learning Systems Suite", res.text)
+        self.assertIn("7/7 Microservices Active", res.text)
+        self.assertIn("chart.umd.min.js", res.text)
+        self.assertIn("x-process-time-ms", res.headers)
+
+    def test_health_endpoint(self):
+        res = self.client.get("/api/health")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "HEALTHY")
+        self.assertEqual(data["active_microservices"], 7)
+        self.assertIn("uptime_seconds", data)
+        self.assertIn("memory_used_mb", data)
+        self.assertEqual(data["systems_status"]["01_churn_ltv"], "ONLINE")
+        self.assertEqual(data["systems_status"]["02_hybrid_rag"], "ONLINE")
+
+    def test_metrics_telemetry_endpoint(self):
+        res = self.client.get("/api/metrics")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("mean_inference_latency_ms", data)
+        self.assertIn("data_drift_psi", data)
+        self.assertIn("fraud_loss_avoidance_monthly_usd", data)
+        self.assertEqual(data["ci_cd_status"], "ALL_8_SUITES_PASSING")
+
+    def test_sql_schema_endpoint(self):
+        res = self.client.get("/api/sql/schema")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("customers", data)
+        self.assertIn("products", data)
+        self.assertIn("orders", data)
+        self.assertIn("order_items", data)
+        self.assertGreater(data["customers"]["row_count"], 50)
 
     def test_churn_endpoint(self):
         payload = {
@@ -86,7 +118,9 @@ class TestUnifiedDashboard(unittest.TestCase):
         data = res.json()
         self.assertIn("predicted_demand", data)
         self.assertIn("plan", data)
+        self.assertIn("historical_series", data)
         self.assertIn("monte_carlo_simulation", data["plan"])
+        self.assertIn("histogram_labels", data["plan"]["monte_carlo_simulation"])
 
     def test_sql_agent_endpoint(self):
         res = self.client.post("/api/sql", json={"question": "Segment customers into RFM quartiles"})

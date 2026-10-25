@@ -23,7 +23,7 @@ class InventoryOptimizer:
         lead_time_days: int = 5,
         n_simulations: int = 1000,
         random_state: int = 42
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """
         Runs Monte Carlo empirical simulations across lead-time demand cycles
         to quantify exact probabilistic stockout distributions.
@@ -43,10 +43,27 @@ class InventoryOptimizer:
         p95_demand = float(np.percentile(total_lead_time_demands, 95))
         p99_demand = float(np.percentile(total_lead_time_demands, 99))
 
+        # Generate 10-bin histogram for dashboard visualization
+        counts, bin_edges = np.histogram(total_lead_time_demands, bins=10)
+        bin_labels = [f"{int(bin_edges[i])}-{int(bin_edges[i+1])}" for i in range(len(counts))]
+
         return {
             "empirical_stockout_probability": round(empirical_stockout_prob, 4),
             "p95_lead_time_demand": round(p95_demand, 1),
-            "p99_lead_time_demand": round(p99_demand, 1)
+            "p99_lead_time_demand": round(p99_demand, 1),
+            "mean_simulated_demand": round(float(np.mean(total_lead_time_demands)), 1),
+            "std_simulated_demand": round(float(np.std(total_lead_time_demands)), 1),
+            "histogram_labels": bin_labels,
+            "histogram_counts": [int(c) for c in counts],
+            "percentiles": {
+                "p10": round(float(np.percentile(total_lead_time_demands, 10)), 1),
+                "p25": round(float(np.percentile(total_lead_time_demands, 25)), 1),
+                "p50_median": round(float(np.percentile(total_lead_time_demands, 50)), 1),
+                "p75": round(float(np.percentile(total_lead_time_demands, 75)), 1),
+                "p90": round(float(np.percentile(total_lead_time_demands, 90)), 1),
+                "p95": round(p95_demand, 1),
+                "p99": round(p99_demand, 1)
+            }
         }
 
     def calculate_replenishment_plan(
